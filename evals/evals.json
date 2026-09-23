@@ -1,0 +1,31 @@
+[
+  {
+    "id": "case1-basic-two-claims",
+    "name": "증빙 정상/누락 + 한도 내/초과 혼합 케이스",
+    "prompt": "당신은 expense-limit-reviewer 스킬을 사용해 아래 경비 청구서를 '규정·한도 검토' 절차로 처리합니다.\n입력(JSON):\n{\n  \"claims\": [\n    {\"claimant\": \"홍길동\", \"expense_type\": \"식비\", \"amount\": {\"value\": 28000, \"currency\": \"KRW\"}, \"date\": \"2026-09-18\", \"has_receipt\": true, \"evidences\": [\"r-123.jpg\"]},\n    {\"claimant\": \"김영희\", \"expense_type\": \"교통비\", \"amount\": {\"value\": 72000, \"currency\": \"KRW\"}, \"date\": \"2026-09-19\", \"has_receipt\": false, \"evidences\": []}\n  ]\n}\nDMN '경비 한도 승인 판단' 결과를 다음과 같이 가정해 반영하세요:\n- 식비 28,000 KRW → limit 30,000 KRW, approval 자동승인, basis \"일비 식비 3만 이하 자동\"\n- 교통비 72,000 KRW → limit 50,000 KRW, approval 팀장승인, basis \"교통비 5만 초과 팀장\"\n요구 산출물: 1) expense_reviews 표준 JSON 배열, 2) | 청구자 | 경비유형 | 청구금액 | 한도 | 초과여부 | 승인구분 | 근거 | 순서의 마크다운 표.",
+    "expected_output": "두 건 각각의 JSON 리뷰와 요약 표. 홍길동=자동승인/초과 아님, 김영희=보완요청(증빙 누락)+초과 예.",
+    "files": [],
+    "assertions": [
+      {"description": "요약 표 헤더 존재", "type": "includes", "value": "| 청구자 | 경비유형 | 청구금액 | 한도 | 초과여부 | 승인구분 | 근거 |"},
+      {"description": "홍길동 자동승인 표시", "type": "includes", "value": "홍길동"},
+      {"description": "자동승인 텍스트 포함", "type": "includes", "value": "자동승인"},
+      {"description": "증빙 누락 사유 기재", "type": "includes", "value": "증빙 누락"},
+      {"description": "보완요청 강등 반영", "type": "includes", "value": "보완요청"},
+      {"description": "JSON 배열 키 존재", "type": "includes", "value": "expense_reviews"}
+    ]
+  },
+  {
+    "id": "case2-edge-missing-and-receipt-exception",
+    "name": "유형/금액 결함 + 영수증 대체 인정 예외",
+    "prompt": "당신은 expense-limit-reviewer 스킬을 사용해 아래 경비 청구서를 처리합니다.\n입력(JSON):\n{\n  \"claims\": [\n    {\"claimant\": \"박민수\", \"expense_type\": \"\", \"amount\": {\"value\": \"abc\", \"currency\": \"KRW\"}, \"date\": \"2026-09-20\", \"has_receipt\": true, \"evidences\": [\"r-777.jpg\"]},\n    {\"claimant\": \"이수정\", \"expense_type\": \"통신비\", \"amount\": {\"value\": 45000, \"currency\": \"KRW\"}, \"date\": \"2026-09-20\", \"has_receipt\": false, \"evidences\": []}\n  ]\n}\nDMN '경비 한도 승인 판단' 결과를 다음과 같이 가정해 반영하세요:\n- 통신비 45,000 KRW → limit 50,000 KRW, approval 자동승인, basis \"영수증 대체 인정: 통신비 월정액\"\n주의: basis에 '영수증 대체 인정'이 포함되면 영수증 누락으로 보완요청으로 강등하지 않습니다.\n요구 산출물: 1) expense_reviews 표준 JSON 배열, 2) 요약 표.",
+    "expected_output": "박민수 건은 보완요청(유형/금액 오류), 이수정 건은 자동승인 및 '영수증 대체 인정' 근거가 표에 반영.",
+    "files": [],
+    "assertions": [
+      {"description": "표 헤더 존재", "type": "includes", "value": "| 청구자 | 경비유형 | 청구금액 | 한도 | 초과여부 | 승인구분 | 근거 |"},
+      {"description": "영수증 대체 인정 근거 반영", "type": "includes", "value": "영수증 대체 인정"},
+      {"description": "박민수 보완요청", "type": "includes", "value": "보완요청"},
+      {"description": "자동승인 최소 1회 표시", "type": "includes", "value": "자동승인"},
+      {"description": "JSON 배열 키 존재", "type": "includes", "value": "expense_reviews"}
+    ]
+  }
+]
